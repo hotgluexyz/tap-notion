@@ -1,62 +1,156 @@
-"""Stream type classes for tap-notion."""
+from typing import Any, Dict, Optional, TypeVar, Union
 
-from pathlib import Path
-from typing import Any, Dict, Optional, Union, List, Iterable
-
-from singer_sdk import typing as th  # JSON Schema typing helpers
+from singer_sdk import typing as th
 
 from tap_notion.client import NotionStream
 
-# TODO: Delete this is if not using json files for schema definition
-SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
-# TODO: - Override `UsersStream` and `GroupsStream` with your own stream definition.
-#       - Copy-paste as many times as needed to create multiple stream types.
+_TToken = TypeVar("_TToken")
 
-
-class UsersStream(NotionStream):
-    """Define custom stream."""
-    name = "users"
-    path = "/users"
+class SearchPagesStream(NotionStream):
+    name = "search_pages"
+    path = "/search"
     primary_keys = ["id"]
-    replication_key = None
-    # Optionally, you may also use `schema_filepath` in place of `schema`:
-    # schema_filepath = SCHEMAS_DIR / "users.json"
+    replication_key = "last_edited_time"
+    rest_method = "POST"
     schema = th.PropertiesList(
-        th.Property("name", th.StringType),
-        th.Property(
-            "id",
-            th.StringType,
-            description="The user's system ID"
-        ),
-        th.Property(
-            "age",
-            th.IntegerType,
-            description="The user's age in years"
-        ),
-        th.Property(
-            "email",
-            th.StringType,
-            description="The user's email address"
-        ),
-        th.Property("street", th.StringType),
-        th.Property("city", th.StringType),
-        th.Property(
-            "state",
-            th.StringType,
-            description="State name in ISO 3166-2 format"
-        ),
-        th.Property("zip", th.StringType),
-    ).to_dict()
-
-
-class GroupsStream(NotionStream):
-    """Define custom stream."""
-    name = "groups"
-    path = "/groups"
-    primary_keys = ["id"]
-    replication_key = "modified"
-    schema = th.PropertiesList(
-        th.Property("name", th.StringType),
+        th.Property("object", th.StringType),
         th.Property("id", th.StringType),
-        th.Property("modified", th.DateTimeType),
+        th.Property("created_time", th.DateTimeType),
+        th.Property("last_edited_time", th.DateTimeType),
+        th.Property(
+            "created_by",
+            th.ObjectType(
+                th.Property("object", th.StringType),
+                th.Property("id", th.StringType),
+            ),
+        ),
+        th.Property(
+            "last_edited_by",
+            th.ObjectType(
+                th.Property("object", th.StringType),
+                th.Property("id", th.StringType),
+            ),
+        ),
+        th.Property("cover", th.CustomType({"type": ["object", "string"]})),
+        th.Property(
+            "icon",
+            th.ObjectType(
+                th.Property("type", th.StringType),
+                th.Property("emoji", th.StringType),
+            ),
+        ),
+        th.Property(
+            "parent",
+            th.ObjectType(
+                th.Property("type", th.StringType),
+                th.Property("page_id", th.StringType),
+            ),
+        ),
+        th.Property("archived", th.BooleanType),
+        th.Property("properties", th.CustomType({"type": ["object", "string"]})),
+        th.Property("url", th.StringType),
     ).to_dict()
+
+    def prepare_request_payload(
+        self, context: Optional[dict], next_page_token: Optional[Any]
+    ) -> Optional[dict]:
+
+        payload = {
+            "filter": {"value": "page", "property": "object"},
+            "sort": {"direction": "ascending", "timestamp": "last_edited_time"},
+            "page_size": 100,
+        }
+
+        if next_page_token:
+            payload.update({"start_cursor": next_page_token})
+
+        return payload
+
+    def get_child_context(self, record: dict, context: Optional[dict]) -> dict:
+        return {"block_id": record["id"]}
+
+
+class BlocksSteam(NotionStream):
+    name = "blocks"
+    path = "/blocks/{block_id}/children"
+    primary_keys = ["id"]
+    replication_key = "last_edited_time"
+    rest_method = "GET"
+    parent_stream_type = SearchPagesStream
+    schema = th.PropertiesList(
+        th.Property("object", th.StringType),
+        th.Property("id", th.StringType),
+        th.Property(
+            "parent",
+            th.ObjectType(
+                th.Property("type", th.StringType),
+                th.Property("page_id", th.StringType),
+            ),
+        ),
+        th.Property("created_time", th.DateTimeType),
+        th.Property("last_edited_time", th.DateTimeType),
+        th.Property(
+            "created_by",
+            th.ObjectType(
+                th.Property("object", th.StringType), th.Property("id", th.StringType)
+            ),
+        ),
+        th.Property(
+            "last_edited_by",
+            th.ObjectType(
+                th.Property("object", th.StringType), th.Property("id", th.StringType)
+            ),
+        ),
+        th.Property("has_children", th.BooleanType),
+        th.Property("archived", th.BooleanType),
+        th.Property("type", th.StringType),
+        th.Property(
+            "child_database", th.ObjectType(th.Property("title", th.StringType))
+        ),
+        th.Property("child_page", th.ObjectType(th.Property("title", th.StringType))),
+        th.Property("heading_3", th.CustomType({"type": ["object", "string"]})),
+        th.Property("heading_2", th.CustomType({"type": ["object", "string"]})),
+        th.Property("heading_1", th.CustomType({"type": ["object", "string"]})),
+        th.Property("to_do", th.CustomType({"type": ["object", "string"]})),
+        th.Property("paragraph", th.CustomType({"type": ["object", "string"]})),
+        th.Property(
+            "bulleted_list_item", th.CustomType({"type": ["object", "string"]})
+        ),
+        th.Property(
+            "numbered_list_item", th.CustomType({"type": ["object", "string"]})
+        ),
+        th.Property("toggle", th.CustomType({"type": ["object", "string"]})),
+        th.Property("child_page", th.CustomType({"type": ["object", "string"]})),
+        th.Property("child_database", th.CustomType({"type": ["object", "string"]})),
+        th.Property("embed", th.CustomType({"type": ["object", "string"]})),
+        th.Property("image", th.CustomType({"type": ["object", "string"]})),
+        th.Property("video", th.CustomType({"type": ["object", "string"]})),
+        th.Property("file", th.CustomType({"type": ["object", "string"]})),
+        th.Property("pdf", th.CustomType({"type": ["object", "string"]})),
+        th.Property("bookmark", th.CustomType({"type": ["object", "string"]})),
+        th.Property("callout", th.CustomType({"type": ["object", "string"]})),
+        th.Property("quote", th.CustomType({"type": ["object", "string"]})),
+        th.Property("equation", th.CustomType({"type": ["object", "string"]})),
+        th.Property("divider", th.CustomType({"type": ["object", "string"]})),
+        th.Property("table_of_contents", th.CustomType({"type": ["object", "string"]})),
+        th.Property("column", th.CustomType({"type": ["object", "string"]})),
+        th.Property("column_list", th.CustomType({"type": ["object", "string"]})),
+        th.Property("link_preview", th.CustomType({"type": ["object", "string"]})),
+        th.Property("synced_block", th.CustomType({"type": ["object", "string"]})),
+        th.Property("template", th.CustomType({"type": ["object", "string"]})),
+        th.Property("link_to_page", th.CustomType({"type": ["object", "string"]})),
+        th.Property("table", th.CustomType({"type": ["object", "string"]})),
+        th.Property("table_row", th.CustomType({"type": ["object", "string"]})),
+        th.Property("unsupported", th.CustomType({"type": ["object", "string"]})),
+    ).to_dict()
+
+    def get_url_params(
+        self, context: Union[dict, None], next_page_token: Union[_TToken, None]
+    ) -> Dict[str, Any]:
+
+        params = {"page_size": 100}
+
+        if next_page_token:
+            params.update({"start_cursor": next_page_token})
+
+        return params

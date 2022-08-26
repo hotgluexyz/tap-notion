@@ -3,6 +3,10 @@ from typing import Any, Dict, Optional, TypeVar, Union
 from singer_sdk import typing as th
 
 from tap_notion.client import NotionStream
+from singer_sdk.helpers.jsonpath import extract_jsonpath
+from pendulum import parse
+
+import requests
 
 _TToken = TypeVar("_TToken")
 
@@ -57,8 +61,8 @@ class SearchPagesStream(NotionStream):
 
         payload = {
             "filter": {"value": "page", "property": "object"},
-            "sort": {"direction": "ascending", "timestamp": "last_edited_time"},
-            "page_size": 100,
+            "sort": {"direction": "descending", "timestamp": "last_edited_time"},
+            "page_size": 1,
         }
 
         if next_page_token:
@@ -68,6 +72,29 @@ class SearchPagesStream(NotionStream):
 
     def get_child_context(self, record: dict, context: Optional[dict]) -> dict:
         return {"block_id": record["id"]}
+
+    def get_next_page_token(
+        self, response: requests.Response, previous_token: Optional[Any]
+    ) -> Optional[Any]:
+
+        # Getting the date of last result 
+        all_matches = extract_jsonpath("$.results[-1:].last_edited_time", response.json())
+        first_match = next(iter(all_matches), None)
+        last_date = parse(first_match).replace(tzinfo=None)
+
+        compare_date = self.get_starting_replication_key_value({})
+        if compare_date:
+            compare_date = parse(compare_date).replace(tzinfo=None)
+
+            if last_date <= compare_date:
+                return None
+
+
+        all_matches = extract_jsonpath(self.next_page_token_jsonpath, response.json())
+        first_match = next(iter(all_matches), None)
+        next_page_token = first_match
+
+        return next_page_token
 
 
 class BlocksSteam(NotionStream):

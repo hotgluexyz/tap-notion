@@ -62,7 +62,7 @@ class SearchPagesStream(NotionStream):
         payload = {
             "filter": {"value": "page", "property": "object"},
             "sort": {"direction": "descending", "timestamp": "last_edited_time"},
-            "page_size": 1,
+            "page_size": 2,
         }
 
         if next_page_token:
@@ -95,6 +95,20 @@ class SearchPagesStream(NotionStream):
         next_page_token = first_match
 
         return next_page_token
+
+    def post_process(self, row: dict, context: Optional[dict] = None) -> Optional[dict]:
+
+        last_date = parse(row["last_edited_time"]).replace(tzinfo=None)
+
+        compare_date = self.get_starting_replication_key_value({})
+        if compare_date:
+            compare_date = parse(compare_date).replace(tzinfo=None)
+
+            if last_date <= compare_date:
+                return None
+
+        return row
+
 
 
 class BlocksSteam(NotionStream):

@@ -1,6 +1,6 @@
 """REST client handling, including NotionStream base class."""
 
-from typing import Any,Optional
+from typing import Any, Optional
 
 import requests
 from memoization import cached
@@ -14,8 +14,8 @@ class NotionStream(RESTStream):
 
     url_base = "https://api.notion.com/v1"
 
-    records_jsonpath = "$.results[*]" 
-    next_page_token_jsonpath = "$.next_cursor" 
+    records_jsonpath = "$.results[*]"
+    next_page_token_jsonpath = "$.next_cursor"
 
     @property
     @cached

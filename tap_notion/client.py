@@ -1,10 +1,12 @@
 """REST client handling, including NotionStream base class."""
 
-from typing import Any,Optional
+from typing import Any, Optional, Union
 
 import requests
 from memoization import cached
 from hotglue_singer_sdk.authenticators import BearerTokenAuthenticator
+
+from tap_notion.auth import NotionAuthenticator
 from hotglue_singer_sdk.helpers.jsonpath import extract_jsonpath
 from hotglue_singer_sdk.streams import RESTStream
 
@@ -19,7 +21,10 @@ class NotionStream(RESTStream):
 
     @property
     @cached
-    def authenticator(self) -> BearerTokenAuthenticator:
+    def authenticator(self) -> Union[BearerTokenAuthenticator, NotionAuthenticator]:
+        use_oauth = self.config.get("use_oauth", False)
+        if use_oauth:
+            return NotionAuthenticator.create_for_stream(self)
         return BearerTokenAuthenticator.create_for_stream(
             self, self.config.get("access_token")
         )

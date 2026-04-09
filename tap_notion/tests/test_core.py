@@ -1,15 +1,10 @@
 """Tests standard tap features using the built-in SDK tests library."""
 
-import datetime
-
 from hotglue_singer_sdk.testing import get_standard_tap_tests
 
 from tap_notion.tap import TapNotion
 
-SAMPLE_CONFIG = {
-    "start_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
-    # TODO: Initialize minimal tap config
-}
+SAMPLE_CONFIG = {"access_token": "test-token"}
 
 
 # Run standard built-in tap tests from the SDK:

@@ -1,18 +1,18 @@
 import json
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import Optional, Tuple
 
 import requests
 from hotglue_etl_exceptions import InvalidCredentialsError
 from hotglue_singer_sdk.authenticators import OAuthAuthenticator, SingletonMeta
 from hotglue_singer_sdk.helpers._util import utc_now
 
-if TYPE_CHECKING:
-    from hotglue_singer_sdk.streams import Stream as RESTStreamBase
+
+from hotglue_singer_sdk.streams import Stream as RESTStreamBase
 
 
 class NotionAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
     @classmethod
-    def create_for_stream(cls, stream: "RESTStreamBase") -> "NotionAuthenticator":
+    def create_for_stream(cls, stream: RESTStreamBase) -> "NotionAuthenticator":
         return cls(
             stream=stream,
             auth_endpoint="https://api.notion.com/v1/oauth/token",

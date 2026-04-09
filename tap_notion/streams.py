@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional, TypeVar, Union
 
-from singer_sdk import typing as th
+from hotglue_singer_sdk import typing as th
 
 from tap_notion.client import NotionStream
 
@@ -77,6 +77,11 @@ class BlocksSteam(NotionStream):
     replication_key = "last_edited_time"
     rest_method = "GET"
     parent_stream_type = SearchPagesStream
+
+    def _get_state_partition_context(self, context: Optional[dict]):
+        return None
+
+
     schema = th.PropertiesList(
         th.Property("object", th.StringType),
         th.Property("id", th.StringType),

@@ -8,11 +8,11 @@ This document guides AI agents and developers working on this Singer tap.
 - **Source**: Notion (Notion API)
 - **Stream type**: REST (`RESTStream` base in `tap_notion/client.py`)
 - **Authentication**: Bearer token — `access_token` in config, `BearerTokenAuthenticator` in `NotionStream.authenticator`
-- **Framework**: [Meltano Singer SDK](https://github.com/meltano/sdk) (`singer_sdk`)
+- **Framework**: [Meltano Singer SDK](https://github.com/meltano/sdk) (`hotglue_singer_sdk`)
 
 ## Architecture
 
-The tap follows the Singer spec and uses `singer_sdk` to extract from Notion.
+The tap follows the Singer spec and uses `hotglue_singer_sdk` to extract from Notion.
 
 ### Key components
 
@@ -47,7 +47,7 @@ The tap follows the Singer spec and uses `singer_sdk` to extract from Notion.
 Example shape:
 
 ```python
-from singer_sdk import typing as th
+from hotglue_singer_sdk import typing as th
 
 from tap_notion.client import NotionStream
 
@@ -122,7 +122,7 @@ tap-notion --config config.json --catalog catalog.json
 Example schema fragment (this tap uses `access_token`):
 
 ```python
-from singer_sdk import typing as th
+from hotglue_singer_sdk import typing as th
 
 config_jsonschema = th.PropertiesList(
     th.Property(
@@ -207,4 +207,4 @@ tap-notion/
 
 ## Reporting SDK issues
 
-For bugs or gaps in **`singer_sdk`** itself, use the [meltano/sdk issue tracker](https://github.com/meltano/sdk/issues). Include SDK version (`tap-notion --version`), Python version, and a minimal repro.
+For bugs or gaps in **`hotglue_singer_sdk`** itself, use the [meltano/sdk issue tracker](https://github.com/meltano/sdk/issues). Include SDK version (`tap-notion --version`), Python version, and a minimal repro.

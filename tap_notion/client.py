@@ -4,9 +4,9 @@ from typing import Any,Optional
 
 import requests
 from memoization import cached
-from singer_sdk.authenticators import BearerTokenAuthenticator
-from singer_sdk.helpers.jsonpath import extract_jsonpath
-from singer_sdk.streams import RESTStream
+from hotglue_singer_sdk.authenticators import BearerTokenAuthenticator
+from hotglue_singer_sdk.helpers.jsonpath import extract_jsonpath
+from hotglue_singer_sdk.streams import RESTStream
 
 
 class NotionStream(RESTStream):

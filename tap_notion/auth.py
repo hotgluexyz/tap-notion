@@ -9,27 +9,52 @@ from hotglue_singer_sdk.helpers._util import utc_now
 
 from hotglue_singer_sdk.streams import Stream as RESTStreamBase
 
+NOTION_TOKEN_ENDPOINT = "https://api.notion.com/v1/oauth/token"
+NOTION_MCP_TOKEN_ENDPOINT = "https://mcp.notion.com/token"
+
+
+def token_endpoint_for(config) -> str:
+    if config.get("use_mcp"):
+        return NOTION_MCP_TOKEN_ENDPOINT
+    return NOTION_TOKEN_ENDPOINT
+
 
 class NotionAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
     @classmethod
     def create_for_stream(cls, stream: RESTStreamBase) -> "NotionAuthenticator":
         return cls(
             stream=stream,
-            auth_endpoint="https://api.notion.com/v1/oauth/token",
+            auth_endpoint=token_endpoint_for(stream.config),
             oauth_scopes=None,
         )
+
+    @property
+    def is_mcp(self) -> bool:
+        return bool(self.config.get("use_mcp"))
+
+    @property
+    def auth_endpoint(self) -> str:
+        return token_endpoint_for(self.config)
 
     @property
     def oauth_request_body(self) -> dict:
         refresh = self.config.get("refresh_token")
         if not refresh:
             raise InvalidCredentialsError("OAuth mode requires refresh_token")
-        return {
+        body = {
             "grant_type": "refresh_token",
             "refresh_token": str(refresh).strip(),
         }
+        if self.is_mcp:
+            cid = self.config.get("client_id")
+            if not cid:
+                raise InvalidCredentialsError("MCP requires client_id")
+            body["client_id"] = str(cid).strip()
+        return body
 
     def request_auth(self) -> Optional[Tuple[str, str]]:
+        if self.is_mcp:
+            return None
         cid = self.config.get("client_id")
         sec = self.config.get("client_secret")
         if not cid or not sec:
@@ -41,15 +66,21 @@ class NotionAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
 
     def update_access_token_locally(self) -> None:
         request_time = utc_now()
+        if self.is_mcp:
+            request_kwargs = {"data": self.oauth_request_body}
+        else:
+            request_kwargs = {
+                "json": self.oauth_request_body,
+                "headers": {
+                    "Accept": "application/json",
+                    "Notion-Version": "2026-03-11",
+                },
+            }
         token_response = requests.post(
             self.auth_endpoint,
-            json=self.oauth_request_body,
             auth=self.request_auth(),
-            headers={
-                "Accept": "application/json",
-                "Notion-Version": "2026-03-11",
-            },
             timeout=60,
+            **request_kwargs,
         )
         try:
             token_response.raise_for_status()

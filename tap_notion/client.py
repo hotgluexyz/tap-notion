@@ -22,8 +22,7 @@ class NotionStream(RESTStream):
     @property
     @cached
     def authenticator(self) -> Union[BearerTokenAuthenticator, NotionAuthenticator]:
-        use_oauth = self.config.get("use_oauth", False)
-        if use_oauth:
+        if self.config.get("use_oauth", False) or self.config.get("use_mcp", False):
             return NotionAuthenticator.create_for_stream(self)
         return BearerTokenAuthenticator.create_for_stream(
             self, self.config.get("access_token")

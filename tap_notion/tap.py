@@ -3,7 +3,7 @@ from typing import List
 from hotglue_singer_sdk import Stream, Tap
 from hotglue_singer_sdk import typing as th
 
-from tap_notion.auth import NotionAuthenticator
+from tap_notion.auth import NotionAuthenticator, token_endpoint_for
 from tap_notion.streams import BlocksSteam, SearchPagesStream
 
 STREAM_TYPES = [SearchPagesStream, BlocksSteam]
@@ -46,11 +46,26 @@ class TapNotion(Tap):
             required=False,
             description="OAuth refresh token from Notion (required when use_oauth is true).",
         ),
+        th.Property(
+            "use_mcp",
+            th.BooleanType,
+            default=False,
+            required=False,
+            description="If true, refresh tokens against the Notion MCP token endpoint. If false, refresh tokens against the Notion OAuth token endpoint.",
+
+        ),
+        th.Property(
+            "expires_in",
+            th.IntegerType,
+            required=False,
+            description="Access token expiry, written back by the tap after a refresh.",
+        ),
     ).to_dict()
 
     @classmethod
     def access_token_support(cls, connector=None):
-        return NotionAuthenticator, "https://api.notion.com/v1/oauth/token"
+        config = connector.config if connector is not None else {}
+        return NotionAuthenticator, token_endpoint_for(config)
 
     def discover_streams(self) -> List[Stream]:
         """Return a list of discovered streams."""
